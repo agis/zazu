@@ -6,20 +6,16 @@ start(Host, Port, Nick) ->
 
 connect(Host, Port, Nick) ->
   {ok, Socket} = gen_tcp:connect(Host, Port, [{keepalive, true}]),
-  do(Socket, string:join(["NICK", Nick, "\r\n"], " ")),
-  do(Socket, "USER justabot 0 * :justabot\r\n"),
-  do(Socket, "JOIN #hi\r\n"),
+  do(Socket, string:join(["NICK", Nick], " ")),
+  do(Socket, string:join(["USER", Nick, "0 * :", Nick], " ")),
+  do(Socket, "JOIN #hi"), % TODO: remove this l8r
   loop(Socket).
 
 loop(Socket) ->
   receive
-    {tcp, _, "PING :irc.exampl2e.net\r\n"} ->
-      io:format("~p~n", ["ping received"]),
-      do(Socket, "PONG yothere irc.exampl2e.net"),
-      loop(Socket);
-    {tcp, _, X} ->
-      io:format("~p~n", [X]),
-      do(Socket, "PRIVMSG #hi :received!"),
+    {tcp, _, Msg} ->
+      io:format("~p~n", [Msg]),
+      handle(Socket, Msg),
       loop(Socket);
     {cmd, quit} ->
       do(Socket, "QUIT"),
@@ -29,7 +25,24 @@ loop(Socket) ->
       loop(Socket)
   end.
 
-do(Socket, Command) ->
-  gen_tcp:send(Socket, string:join([Command, "\r\n"], "")).
+handle(Socket, Msg) ->
+  % format of each IRC command is :Name COMMAND parameter list
+  %        :wizy!~test@127.0.0.1 JOIN :#hi\r\n
+  %
+  % now parse direct msgs
+  case lists:nth(1, string:tokens(Msg, " ")) of
+    "PING" ->
+      Pong = re:replace(Msg, "PING", "PONG", [{return, list}]),
+      do(Socket, Pong);
+    % how handle privmsgs? cmds?
+    _msg   -> do(Socket, "PRIVMSG #hi :another msg received")
+  end.
 
+do(Socket, Command) ->
+  case string:right(Command, 2) of
+    "\r\n" -> gen_tcp:send(Socket, Command);
+    _      -> gen_tcp:send(Socket, string:join([Command, "\r\n"], ""))
+  end.
+
+% make an interface for sending process messages
 % cmd(P, Cmd) -> P ! {cmd, Cmd}.
