@@ -25,17 +25,14 @@ loop(Socket) ->
       loop(Socket)
   end.
 
+% format of each IRC command is :Name COMMAND parameter list
+%   ex. :wizy!~test@127.0.0.1 JOIN :#hi\r\n
+%
+% now parse privmsgs
 handle(Socket, Msg) ->
-  % format of each IRC command is :Name COMMAND parameter list
-  %        :wizy!~test@127.0.0.1 JOIN :#hi\r\n
-  %
-  % now parse direct msgs
-  case lists:nth(1, string:tokens(Msg, " ")) of
-    "PING" ->
-      Pong = re:replace(Msg, "PING", "PONG", [{return, list}]),
-      do(Socket, Pong);
-    % how handle privmsgs? cmds?
-    _msg   -> do(Socket, "PRIVMSG #hi :another msg received")
+  case string:tokens(Msg, " ") of
+    ["PING"|_] -> do(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
+            _  -> do(Socket, "PRIVMSG #hi :another msg received")
   end.
 
 do(Socket, Command) ->
