@@ -41,5 +41,4 @@ do(Socket, Command) ->
     _      -> gen_tcp:send(Socket, string:join([Command, "\r\n"], ""))
   end.
 
-% make an interface for sending process messages
-% cmd(P, Cmd) -> P ! {cmd, Cmd}.
+cmd(Pid, Cmd) -> Pid ! {cmd, Cmd}.
