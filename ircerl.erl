@@ -1,8 +1,8 @@
 -module(ircerl).
--compile(export_all).
+-export([start/3, cmd/2]).
 
 start(Host, Port, Nick) ->
-  spawn(?MODULE, connect, [Host, Port, Nick]).
+  spawn(fun() -> connect(Host, Port, Nick) end).
 
 connect(Host, Port, Nick) ->
   {ok, Socket} = gen_tcp:connect(Host, Port, [{keepalive, true}]),
@@ -17,7 +17,7 @@ loop(Socket) ->
       io:format("~p~n", [Msg]),
       handle(Socket, Msg),
       loop(Socket);
-    {cmd, quit} ->
+    {cmd, quit} -> % maybe we don't want this
       do(Socket, "QUIT"),
       gen_tcp:close(Socket);
     {cmd, Command} ->
@@ -25,15 +25,20 @@ loop(Socket) ->
       loop(Socket)
   end.
 
-% format of each IRC command is :Name COMMAND parameter list
-%   ex. :wizy!~test@127.0.0.1 JOIN :#hi\r\n
-%
-% now parse privmsgs
 handle(Socket, Msg) ->
   case string:tokens(Msg, " ") of
-    ["PING"|_] -> do(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
-            _  -> do(Socket, "PRIVMSG #hi :another msg received")
+    ["PING"|_] ->
+      do(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
+    [User, "PRIVMSG", Channel|Message] ->
+      handle(Socket, User, Channel, Message);
+    _ ->
+      loop(Socket)
   end.
+
+handle(Socket, User, Channel, Message) ->
+  Nick = string:sub_string(string:sub_word(User, 1, $!), 2),
+  do(Socket, "PRIVMSG" ++ " " ++ Channel ++ " " ++ Message),
+  do(Socket, "PRIVMSG" ++ " " ++ Nick ++ " " ++ Message).
 
 do(Socket, Command) ->
   case string:right(Command, 2) of
@@ -41,4 +46,9 @@ do(Socket, Command) ->
     _      -> gen_tcp:send(Socket, string:join([Command, "\r\n"], ""))
   end.
 
-cmd(Pid, Cmd) -> Pid ! {cmd, Cmd}.
+cmd(Pid, Cmd) ->
+  Pid ! {cmd, Cmd}.
+
+% msg parser
+% read msgs only from the self process?
+% handle each msg to a separate proc?
