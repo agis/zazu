@@ -7,8 +7,7 @@ start(Host, Port, Nick) ->
 connect(Host, Port, Nick) ->
   {ok, Socket} = gen_tcp:connect(Host, Port, [{keepalive, true}]),
   do(Socket, string:join(["NICK", Nick], " ")),
-  do(Socket, string:join(["USER", Nick, "0 * :", Nick], " ")),
-  do(Socket, "JOIN #hi"), % TODO: remove this l8r
+  do(Socket, string:join(["USER", Nick, "0 * :erni3 bot"], " ")),
   loop(Socket).
 
 loop(Socket) ->
