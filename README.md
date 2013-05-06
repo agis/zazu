@@ -1,3 +1,3 @@
-**TODO**
+# Zazu, your majordomo
 
-write readme
+I've got nothing yet.
