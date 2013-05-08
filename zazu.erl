@@ -1,13 +1,19 @@
 -module(zazu).
 -export([start/3, do/2, kill/1]).
+-compile(export_all).
 
 start(Host, Port, Nick) ->
   spawn(fun() -> connect(Host, Port, Nick) end).
+
+% for development only
+start() ->
+  spawn(fun() -> connect("127.0.0.1", 6667, "rze") end).
 
 connect(Host, Port, Nick) ->
   {ok, Socket} = gen_tcp:connect(Host, Port, [{keepalive, true}]),
   cmd(Socket, string:join(["NICK", Nick], " ")),
   cmd(Socket, string:join(["USER", Nick, "0 * :zazu bot"], " ")),
+  cmd(Socket, "join #hi"), % for development only
   loop(Socket).
 
 loop(Socket) ->
@@ -28,16 +34,29 @@ handle(Socket, Msg) ->
   case string:tokens(Msg, " ") of
     ["PING"|_] ->
       cmd(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
-    [User, "PRIVMSG", Channel|Message] ->
-      handle(Socket, User, Channel, Message);
+    [User, "PRIVMSG", Channel|[":zazu"|Message]] ->
+      io:format("~p~n", [Message]), % for debugging
+      handle(Socket, User, Channel, parse(Message));
     _ ->
       loop(Socket)
   end.
 
-handle(Socket, User, Channel, Message) ->
-  Nick = string:sub_string(string:sub_word(User, 1, $!), 2),
-  cmd(Socket, "PRIVMSG" ++ " " ++ Channel ++ " " ++ Message),
-  cmd(Socket, "PRIVMSG" ++ " " ++  Nick   ++ " " ++ Message).
+% command handling goes here
+handle(Socket, User, Channel, Msg) when Msg == "malaka" ->
+  cmd(Socket, construct_answer(Channel, fetch_nick(User), "gamiesai"));
+handle(Socket, _User, Channel, _Msg) ->
+  cmd(Socket, construct_answer(Channel, "unrecognized command")).
+
+construct_answer(Channel, Nick, Answer) ->
+  "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Nick ++ " " ++ Answer.
+construct_answer(Channel, Answer) ->
+  "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Answer.
+
+fetch_nick(User) ->
+  string:sub_string(string:sub_word(User, 1, $!), 2).
+
+parse([Message]) ->
+  re:replace(Message, "\r\n", "", [{return, list}]).
 
 cmd(Socket, Command) ->
   case string:right(Command, 2) of
@@ -51,8 +70,6 @@ do(Pid, Cmd) ->
 kill(Pid) ->
   Pid ! quit.
 
-% think something useful!!! start with the curl request
-
-% msg parser
+% add documentation
 % read msgs only from the self process?
 % handle each msg to a separate proc?
