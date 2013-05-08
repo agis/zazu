@@ -1,13 +1,13 @@
--module(ircerl).
--export([start/3, cmd/2]).
+-module(zazu).
+-export([start/3, do/2, kill/1]).
 
 start(Host, Port, Nick) ->
   spawn(fun() -> connect(Host, Port, Nick) end).
 
 connect(Host, Port, Nick) ->
   {ok, Socket} = gen_tcp:connect(Host, Port, [{keepalive, true}]),
-  do(Socket, string:join(["NICK", Nick], " ")),
-  do(Socket, string:join(["USER", Nick, "0 * :erni3 bot"], " ")),
+  cmd(Socket, string:join(["NICK", Nick], " ")),
+  cmd(Socket, string:join(["USER", Nick, "0 * :zazu bot"], " ")),
   loop(Socket).
 
 loop(Socket) ->
@@ -16,18 +16,18 @@ loop(Socket) ->
       io:format("~p~n", [Msg]),
       handle(Socket, Msg),
       loop(Socket);
-    {cmd, quit} -> % maybe we don't want this
-      do(Socket, "QUIT"),
+    quit ->
+      cmd(Socket, "QUIT :killed from my master"),
       gen_tcp:close(Socket);
-    {cmd, Command} ->
-      do(Socket, Command),
+    Command ->
+      cmd(Socket, Command),
       loop(Socket)
   end.
 
 handle(Socket, Msg) ->
   case string:tokens(Msg, " ") of
     ["PING"|_] ->
-      do(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
+      cmd(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
     [User, "PRIVMSG", Channel|Message] ->
       handle(Socket, User, Channel, Message);
     _ ->
@@ -36,17 +36,22 @@ handle(Socket, Msg) ->
 
 handle(Socket, User, Channel, Message) ->
   Nick = string:sub_string(string:sub_word(User, 1, $!), 2),
-  do(Socket, "PRIVMSG" ++ " " ++ Channel ++ " " ++ Message),
-  do(Socket, "PRIVMSG" ++ " " ++ Nick ++ " " ++ Message).
+  cmd(Socket, "PRIVMSG" ++ " " ++ Channel ++ " " ++ Message),
+  cmd(Socket, "PRIVMSG" ++ " " ++  Nick   ++ " " ++ Message).
 
-do(Socket, Command) ->
+cmd(Socket, Command) ->
   case string:right(Command, 2) of
     "\r\n" -> gen_tcp:send(Socket, Command);
     _      -> gen_tcp:send(Socket, string:join([Command, "\r\n"], ""))
   end.
 
-cmd(Pid, Cmd) ->
-  Pid ! {cmd, Cmd}.
+do(Pid, Cmd) ->
+  Pid ! Cmd.
+
+kill(Pid) ->
+  Pid ! quit.
+
+% think something useful!!! start with the curl request
 
 % msg parser
 % read msgs only from the self process?
