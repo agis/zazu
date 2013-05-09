@@ -1,13 +1,21 @@
 -module(zazu).
 -export([start/3, do/2, kill/1]).
--compile(export_all).
+-export([start/0]).
 
+% --------- API ----------
 start(Host, Port, Nick) ->
   spawn(fun() -> connect(Host, Port, Nick) end).
 
 % for development only
 start() ->
   spawn(fun() -> connect("127.0.0.1", 6667, "rze") end).
+
+do(Pid, Cmd) ->
+  Pid ! Cmd.
+
+kill(Pid) ->
+  Pid ! quit.
+% --------- API ------------
 
 connect(Host, Port, Nick) ->
   {ok, Socket} = gen_tcp:connect(Host, Port, [{keepalive, true}]),
@@ -37,7 +45,7 @@ handle(Socket, Msg) ->
       cmd(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
     [User, "PRIVMSG", Channel|[":zazu"|Message]] ->
       io:format("~p~n", [Message]), % for debugging
-      handle(Socket, User, Channel, normalize_inc(Message));
+      handle(Socket, User, Channel, strip_msg(Message));
     _ ->
       loop(Socket)
   end.
@@ -54,13 +62,6 @@ reply({targeted, Channel, Nick, Answer}) ->
 reply({public, Channel, Answer}) ->
   "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Answer.
 
-fetch_nick(User) ->
-  string:sub_string(string:sub_word(User, 1, $!), 2).
-
-% Strips trailing newlines from incoming messages
-normalize_inc([Message]) ->
-  re:replace(Message, "\r\n", "", [{return, list}]).
-
 % Normalizes and sends a TCP packet to the server
 cmd(Socket, Command) ->
   case string:right(Command, 2) of
@@ -68,11 +69,12 @@ cmd(Socket, Command) ->
     _      -> gen_tcp:send(Socket, string:join([Command, "\r\n"], ""))
   end.
 
-do(Pid, Cmd) ->
-  Pid ! Cmd.
+fetch_nick(User) ->
+  string:sub_string(string:sub_word(User, 1, $!), 2).
 
-kill(Pid) ->
-  Pid ! quit.
+% Strips trailing newlines from incoming messages
+strip_msg([Message]) ->
+  re:replace(Message, "\r\n", "", [{return, list}]).
 
 % add documentation
 % read msgs only from the self process?
