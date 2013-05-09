@@ -30,34 +30,38 @@ loop(Socket) ->
       loop(Socket)
   end.
 
+% Handles incoming TCP messages   
 handle(Socket, Msg) ->
   case string:tokens(Msg, " ") of
     ["PING"|_] ->
       cmd(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
     [User, "PRIVMSG", Channel|[":zazu"|Message]] ->
       io:format("~p~n", [Message]), % for debugging
-      handle(Socket, User, Channel, parse(Message));
+      handle(Socket, User, Channel, normalize_inc(Message));
     _ ->
       loop(Socket)
   end.
 
-% command handling goes here
+% Handles recognized incoming messages
 handle(Socket, User, Channel, Msg) when Msg == "malaka" ->
-  cmd(Socket, construct_answer(Channel, fetch_nick(User), "gamiesai"));
+  cmd(Socket, reply({targeted, Channel, fetch_nick(User), "gamiesai"}));
 handle(Socket, _User, Channel, _Msg) ->
-  cmd(Socket, construct_answer(Channel, "unrecognized command")).
+  cmd(Socket, reply({public, Channel, "unrecognized command"})).
 
-construct_answer(Channel, Nick, Answer) ->
-  "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Nick ++ " " ++ Answer.
-construct_answer(Channel, Answer) ->
+% Constructs commands to send to the server
+reply({targeted, Channel, Nick, Answer}) ->
+  "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Nick ++ " " ++ Answer;
+reply({public, Channel, Answer}) ->
   "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Answer.
 
 fetch_nick(User) ->
   string:sub_string(string:sub_word(User, 1, $!), 2).
 
-parse([Message]) ->
+% Strips trailing newlines from incoming messages
+normalize_inc([Message]) ->
   re:replace(Message, "\r\n", "", [{return, list}]).
 
+% Normalizes and sends a TCP packet to the server
 cmd(Socket, Command) ->
   case string:right(Command, 2) of
     "\r\n" -> gen_tcp:send(Socket, Command);
