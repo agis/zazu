@@ -44,19 +44,23 @@ handle(Socket, Msg) ->
     ["PING"|_] ->
       cmd(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
     [User, "PRIVMSG", Channel|[":zazu"|Message]] ->
-      io:format("~p~n", [Message]), % for debugging
+      io:format("~p~n", [Message]),
       handle(Socket, User, Channel, strip_msg(Message));
     _ ->
       loop(Socket)
   end.
 
 % Handles recognized incoming messages
-handle(Socket, User, Channel, Msg) when Msg == "malaka" ->
+handle(Socket, User, Channel, [H|_]) when H == "malaka" ->
   cmd(Socket, reply({targeted, Channel, fetch_nick(User), "gamiesai"}));
+handle(Socket, User, Channel, [H|T]) when H == "announce" ->
+  inets:start(),
+  httpc:request(post, { "http://0.0.0.0:3030/widgets/welcome", [], "application/x-www-formurlencoded", "\{ \"auth_token\": \"YOUR_AUTH_TOKEN\", \"text\": \"" ++ construct_message(T) ++ "\" \}" }, [], []),
+  cmd(Socket, reply({targeted, Channel, fetch_nick(User), "announced"}));
 handle(Socket, _User, Channel, _Msg) ->
   cmd(Socket, reply({public, Channel, "unrecognized command"})).
 
-% Constructs commands to send to the server
+% Constructs IRC PRIVMSG replies to send to the server
 reply({targeted, Channel, Nick, Answer}) ->
   "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Nick ++ " " ++ Answer;
 reply({public, Channel, Answer}) ->
@@ -72,9 +76,13 @@ cmd(Socket, Command) ->
 fetch_nick(User) ->
   string:sub_string(string:sub_word(User, 1, $!), 2).
 
-% Strips trailing newlines from incoming messages
-strip_msg([Message]) ->
-  re:replace(Message, "\r\n", "", [{return, list}]).
+% Accepts an incoming message as a list and strips trailing newlines
+strip_msg(Message) ->
+  Strip = fun(X) -> re:replace(X, "\r\n", "", [{return, list}]) end,
+  lists:map(Strip, Message).
+
+construct_message(L) ->
+  string:join(L, " ").
 
 % add documentation
 % read msgs only from the self process?
