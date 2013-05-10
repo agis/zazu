@@ -36,7 +36,6 @@ loop(Socket) ->
       loop(Socket)
   end.
 
-% Handles incoming TCP messages   
 handle_tcp(Socket, Msg) ->
   case string:tokens(Msg, " ") of
     ["PING"|_] ->
@@ -48,7 +47,6 @@ handle_tcp(Socket, Msg) ->
       loop(Socket)
   end.
 
-% Handles recognized incoming messages
 handle_msg(Socket, User, Channel, [H|_]) when H == "malaka" ->
   send_tcp(Socket, reply({targeted, Channel, zazu_helper:fetch_nick(User), "gamiesai"}));
 handle_msg(Socket, User, Channel, [H|T]) when H == "announce" ->
@@ -58,13 +56,11 @@ handle_msg(Socket, User, Channel, [H|T]) when H == "announce" ->
 handle_msg(Socket, _User, Channel, _Msg) ->
   send_tcp(Socket, reply({public, Channel, "unrecognized command"})).
 
-% Constructs IRC PRIVMSG replies to send to the server
 reply({targeted, Channel, Nick, Answer}) ->
   "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Nick ++ " " ++ Answer;
 reply({public, Channel, Answer}) ->
   "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Answer.
 
-% Normalizes and sends a TCP packet to the server
 send_tcp(Socket, Command) ->
   case string:right(Command, 2) of
     "\r\n" -> gen_tcp:send(Socket, Command);
