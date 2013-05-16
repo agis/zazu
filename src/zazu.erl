@@ -53,8 +53,8 @@ handle_msg(Socket, User, Channel, [H|T]) when H == "announce" ->
   inets:start(),
   httpc:request(post, { "http://0.0.0.0:3030/widgets/welcome", [], "application/x-www-formurlencoded", "\{ \"auth_token\": \"YOUR_AUTH_TOKEN\", \"text\": \"" ++ zazu_helper:construct_message(T) ++ "\" \}" }, [], []),
   send_tcp(Socket, reply({targeted, Channel, zazu_helper:fetch_nick(User), "announced"}));
-handle_msg(Socket, _User, Channel, _Msg) ->
-  send_tcp(Socket, reply({public, Channel, "unrecognized command"})).
+handle_msg(Socket, User, Channel, _Msg) ->
+  send_tcp(Socket, reply({public, Channel, "ase mas re " ++ zazu_helper:fetch_nick(User)})).
 
 reply({targeted, Channel, Nick, Answer}) ->
   "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Nick ++ " " ++ Answer;
