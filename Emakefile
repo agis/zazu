@@ -1,1 +1,1 @@
-{'src/*', [debug_info, {outdir, "beam/"}]}.
+{'src/*', [debug_info, {outdir, "."}]}.
