@@ -40,7 +40,7 @@ handle_tcp(Socket, Msg) ->
   case string:tokens(Msg, " ") of
     ["PING"|_] ->
       send_tcp(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
-    [User, "PRIVMSG", Channel|[":zazu"|Message]] ->
+    [User, "PRIVMSG", Channel|[H|Message]] when H == ":zazu"; H == ":zazu:" ->
       io:format("~p~n", [Message]), % dev
       handle_msg(Socket, User, Channel, zazu_helper:strip_msg(Message));
     _ ->
