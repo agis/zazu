@@ -54,7 +54,11 @@ handle_msg({Mode, Socket}, User, Channel, [H|_]) when H == "malaka" ->
   send_packet({Mode, Socket}, reply({targeted, Channel, zazu_helper:fetch_nick(User), "gamiesai"}));
 handle_msg({Mode, Socket}, User, Channel, [H|T]) when H == "announce" ->
   inets:start(),
-  httpc:request(post, { "http://0.0.0.0:3030/widgets/welcome", [], "application/x-www-formurlencoded", "\{ \"auth_token\": \"YOUR_AUTH_TOKEN\", \"text\": \"" ++ zazu_helper:construct_message(T) ++ "\" \}" }, [], []),
+  httpc:request(
+    post,
+    {"http://0.0.0.0:3030/widgets/welcome", [], "application/x-www-formurlencoded", "\{ \"auth_token\": \"YOUR_AUTH_TOKEN\", \"text\": \"" ++ string:join(T, " ") ++ "\" \}" },
+    [], []
+  ),
   send_packet({Mode, Socket}, reply({targeted, Channel, zazu_helper:fetch_nick(User), "announced"}));
 handle_msg({Mode, Socket}, User, Channel, _Msg) ->
   send_packet({Mode, Socket}, reply({public, Channel, "ase mas re " ++ zazu_helper:fetch_nick(User)})).
