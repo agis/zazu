@@ -1,68 +1,76 @@
 -module(zazu).
--export([start/3, do/2, kill/1]).
--export([start/0]).
+-export([start/4, do/2, kill/1]).
 
-start(Host, Port, Nick) ->
-  spawn(fun() -> connect(Host, Port, Nick) end).
-
-% dev
-start() ->
-  spawn(fun() -> connect("127.0.0.1", 6667, "zazu") end).
+start(Mode, Host, Port, Nick) ->
+  spawn(fun() -> connect(Mode, Host, Port, Nick) end).
 
 do(Pid, Cmd) ->
-  Pid ! Cmd.
+  Pid ! {cmd, Cmd}.
 
 kill(Pid) ->
   Pid ! quit.
 
-connect(Host, Port, Nick) ->
+connect(tcp, Host, Port, Nick) ->
   {ok, Socket} = gen_tcp:connect(Host, Port, [{keepalive, true}]),
-  send_tcp(Socket, string:join(["NICK", Nick], " ")),
-  send_tcp(Socket, string:join(["USER", Nick, "0 * :zazu bot"], " ")),
-  send_tcp(Socket, "join #hi"), % dev
-  loop(Socket).
+  send_packet({tcp, Socket}, "NICK " ++ Nick),
+  send_packet({tcp, Socket}, "USER ykz 0 * :" ++ Nick),
+  loop({tcp, Socket});
+connect(ssl, Host, Port, Nick) ->
+  ssl:start(),
+  {ok, Socket} = ssl:connect(Host, Port, []),
+  send_packet({ssl, Socket}, "NICK " ++ Nick),
+  send_packet({ssl, Socket}, "USER ykz 0 * :" ++ Nick),
+  loop({ssl, Socket}).
 
-loop(Socket) ->
+loop({Mode, Socket}) ->
   receive
-    {tcp, _, Msg} ->
+    {Mode, _, Msg} ->
       io:format("~p~n", [Msg]),
-      handle_tcp(Socket, Msg),
-      loop(Socket);
+      handle_packet({Mode, Socket}, Msg),
+      loop({Mode, Socket});
+    {cmd, Command} ->
+      send_packet({Mode, Socket}, Command),
+      loop({Mode, Socket});
     quit ->
-      send_tcp(Socket, "QUIT :killed from my master"),
-      gen_tcp:close(Socket);
-    Command ->
-      send_tcp(Socket, Command),
-      loop(Socket)
+      send_packet({Mode, Socket}, "QUIT :killed from my master"),
+      case Mode of
+        tcp -> gen_tcp:close(Socket);
+        ssl -> ssl:close(Socket)
+      end
   end.
 
-handle_tcp(Socket, Msg) ->
+handle_packet({Mode, Socket}, Msg) ->
   case string:tokens(Msg, " ") of
     ["PING"|_] ->
-      send_tcp(Socket, re:replace(Msg, "PING", "PONG", [{return, list}]));
+      send_packet({Mode, Socket}, re:replace(Msg, "PING", "PONG", [{return, list}]));
     [User, "PRIVMSG", Channel|[H|Message]] when H == ":zazu"; H == ":zazu:" ->
       io:format("~p~n", [Message]), % dev
-      handle_msg(Socket, User, Channel, zazu_helper:strip_msg(Message));
+      handle_msg({Mode, Socket}, User, Channel, zazu_helper:strip_msg(Message));
     _ ->
-      loop(Socket)
+      loop({Mode, Socket})
   end.
 
-handle_msg(Socket, User, Channel, [H|_]) when H == "malaka" ->
-  send_tcp(Socket, reply({targeted, Channel, zazu_helper:fetch_nick(User), "gamiesai"}));
-handle_msg(Socket, User, Channel, [H|T]) when H == "announce" ->
+handle_msg({Mode, Socket}, User, Channel, [H|_]) when H == "malaka" ->
+  send_packet({Mode, Socket}, reply({targeted, Channel, zazu_helper:fetch_nick(User), "gamiesai"}));
+handle_msg({Mode, Socket}, User, Channel, [H|T]) when H == "announce" ->
   inets:start(),
   httpc:request(post, { "http://0.0.0.0:3030/widgets/welcome", [], "application/x-www-formurlencoded", "\{ \"auth_token\": \"YOUR_AUTH_TOKEN\", \"text\": \"" ++ zazu_helper:construct_message(T) ++ "\" \}" }, [], []),
-  send_tcp(Socket, reply({targeted, Channel, zazu_helper:fetch_nick(User), "announced"}));
-handle_msg(Socket, User, Channel, _Msg) ->
-  send_tcp(Socket, reply({public, Channel, "ase mas re " ++ zazu_helper:fetch_nick(User)})).
+  send_packet({Mode, Socket}, reply({targeted, Channel, zazu_helper:fetch_nick(User), "announced"}));
+handle_msg({Mode, Socket}, User, Channel, _Msg) ->
+  send_packet({Mode, Socket}, reply({public, Channel, "ase mas re " ++ zazu_helper:fetch_nick(User)})).
 
 reply({targeted, Channel, Nick, Answer}) ->
   "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Nick ++ " " ++ Answer;
 reply({public, Channel, Answer}) ->
   "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Answer.
 
-send_tcp(Socket, Command) ->
+send_packet({tcp, Socket}, Command) ->
   case string:right(Command, 2) of
     "\r\n" -> gen_tcp:send(Socket, Command);
     _      -> gen_tcp:send(Socket, string:join([Command, "\r\n"], ""))
+  end;
+send_packet({ssl, Socket}, Command) ->
+  case string:right(Command, 2) of
+    "\r\n" -> ssl:send(Socket, Command);
+    _      -> ssl:send(Socket, string:join([Command, "\r\n"], ""))
   end.
