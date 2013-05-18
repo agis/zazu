@@ -44,14 +44,19 @@ handle_packet({Mode, Socket}, Msg) ->
     ["PING"|_] ->
       send_packet({Mode, Socket}, re:replace(Msg, "PING", "PONG", [{return, list}]));
     [User, "PRIVMSG", Channel|[H|Message]] when H == ":zazu"; H == ":zazu:" ->
-      io:format("~p~n", [Message]), % dev
       handle_msg({Mode, Socket}, User, Channel, zazu_helper:strip_msg(Message));
-    _ ->
-      loop({Mode, Socket})
+    [User, "PRIVMSG", Channel|Message] ->
+      case lists:member("zazu", zazu_helper:strip_msg(Message)) of
+        true ->
+          send_packet({Mode, Socket}, privmsg({channel, targeted}, Channel, User, zazu_answers:mentioned())),
+          loop({Mode, Socket});
+        false ->
+          loop({Mode, Socket})
+      end;
+      _Unrecognized ->
+        loop({Mode, Socket})
   end.
 
-handle_msg({Mode, Socket}, User, Channel, [H|_]) when H == "malaka" ->
-  send_packet({Mode, Socket}, reply({targeted, Channel, zazu_helper:fetch_nick(User), "gamiesai"}));
 handle_msg({Mode, Socket}, User, Channel, [H|T]) when H == "announce" ->
   inets:start(),
   httpc:request(
@@ -59,13 +64,14 @@ handle_msg({Mode, Socket}, User, Channel, [H|T]) when H == "announce" ->
     {"http://0.0.0.0:3030/widgets/welcome", [], "application/x-www-formurlencoded", "\{ \"auth_token\": \"YOUR_AUTH_TOKEN\", \"text\": \"" ++ string:join(T, " ") ++ "\" \}" },
     [], []
   ),
-  send_packet({Mode, Socket}, reply({targeted, Channel, zazu_helper:fetch_nick(User), "announced"}));
+  send_packet({Mode, Socket}, privmsg({channel, targeted}, Channel, User, "done"));
 handle_msg({Mode, Socket}, User, Channel, _Msg) ->
-  send_packet({Mode, Socket}, reply({public, Channel, "ase mas re " ++ zazu_helper:fetch_nick(User)})).
+  send_packet({Mode, Socket}, privmsg({channel, targeted}, Channel, User, zazu_answers:unknown())).
 
-reply({targeted, Channel, Nick, Answer}) ->
-  "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Nick ++ " " ++ Answer;
-reply({public, Channel, Answer}) ->
+privmsg({channel, targeted}, Channel, User, Answer) ->
+  Nick = zazu_helper:fetch_nick(User),
+  "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Nick ++ ": " ++ Answer;
+privmsg({channel, public}, Channel, _User, Answer) ->
   "PRIVMSG" ++ " " ++ Channel ++ " " ++ ":" ++ Answer.
 
 send_packet({tcp, Socket}, Command) ->
