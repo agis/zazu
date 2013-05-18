@@ -1,6 +1,9 @@
 -module(zazu).
 -export([start/4, do/2, kill/1]).
 
+-define(AnnounceUrl, "http://0.0.0.0:3030/widgets/welcome").
+-define(AnnounceAuth, "YOUR_AUTH_TOKEN").
+
 start(Mode, Host, Port, Nick) ->
   spawn(fun() -> connect(Mode, Host, Port, Nick) end).
 
@@ -61,7 +64,7 @@ handle_msg({Mode, Socket}, User, Channel, [H|T]) when H == "announce" ->
   inets:start(),
   httpc:request(
     post,
-    {"http://0.0.0.0:3030/widgets/welcome", [], "application/x-www-formurlencoded", "\{ \"auth_token\": \"YOUR_AUTH_TOKEN\", \"text\": \"" ++ string:join(T, " ") ++ "\" \}" },
+    {?AnnounceUrl, [], "application/x-www-formurlencoded", "\{ \"auth_token\": \"" ++ ?AnnounceAuth ++ "\", \"text\": \"" ++ string:join(T, " ") ++ "\" \}" },
     [], []
   ),
   send_packet({Mode, Socket}, privmsg({channel, targeted}, Channel, User, "done"));
