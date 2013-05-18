@@ -1,10 +1,10 @@
 # Zazu, your majordomo
 
-Zazu is an experimental IRC bot aiming to be easy to extend.
+Zazu is an experimental IRC bot written written in Erlang.
 
 ## Usage
 
-From the root folder, fire ap a Erlang shell and build it:
+From the root folder, fire up a Erlang shell and build Zazu:
 
 ```
 make:all().
@@ -32,6 +32,14 @@ So you can spawn as many bots as you like and operate them from the same shell.
 * Easily extended: you can easily add your own command handlers, see `zazu:handle_msg/4`. Just pattern-match as you wish :)
 * Supports SSL.
 * Process-based. From the same shell you can spawn as many bots as you like and administrate them at the same time.
+
+## Documentation
+
+Visit the [wiki](https://github.com/Agis-/zazu/wiki) for documentation.
+
+## Contributing
+
+I'd be more than happy to see issues reported, pull requests opened, wiki pages added.
 
 
 
