@@ -16,7 +16,7 @@ spawn it:
 Bot = zazu:start(tcp, "irc.freenode.net", 6667, "zazu").
 ```
 
-`start/4` will spawn a new VM process. From now on you can execute ad-hoc IRC commands:
+this will spawn a new VM process and save it into `Bot`. From now on you can execute ad-hoc IRC commands:
 
 ```
 zazu:do(Bot, "join #ye").
@@ -24,7 +24,7 @@ zazu:do(Bot, "join #ye").
 
 To connect using SSL, replace `tcp` with `ssl`.
 
-So you can spawn as many bots as you like and operate them from the same shell.
+The same way, you can spawn as many bots as you like and operate them from the same shell.
 
 ## Features
 
