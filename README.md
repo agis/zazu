@@ -1,6 +1,6 @@
 # Zazu, your majordomo
 
-Zazu is an experimental IRC bot written written in Erlang.
+Zazu is an experimental IRC bot that does nothing interesting yet.
 
 ### Usage
 
