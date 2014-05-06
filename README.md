@@ -6,23 +6,28 @@ Zazu is an experimental IRC bot that does nothing interesting yet.
 
 From the root folder, fire up a Erlang shell and build Zazu:
 
-```
-make:all().
+```erlang
+> make:all().
 ```
 
 spawn it:
 
-```
-Bot = zazu:start(tcp, "irc.freenode.net", 6667, "zazu").
+```erlang
+> Bot = zazu:start(tcp, "irc.freenode.net", 6667, "zazu").
 ```
 
 this will spawn a new VM process and save it into `Bot`. From now on you can execute ad-hoc IRC commands:
 
-```
-zazu:do(Bot, "join #ye").
+```erlang
+> zazu:do(Bot, "join #ye").
 ```
 
-To connect using SSL, replace `tcp` with `ssl`.
+For an SSL connection:
+
+```erlang
+> Bot = zazu:start(ssl, "irc.freenode.net", 6667, "zazu").
+```
+
 
 The same way, you can spawn as many bots as you like and operate them from the same shell.
 
