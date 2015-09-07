@@ -38,10 +38,6 @@ The same way, you can spawn as many bots as you like and operate them from the s
 * Supports SSL.
 * Process-based. From the same shell you can spawn as many bots as you like and administrate them at the same time.
 
-### Documentation
-
-Visit the [wiki](https://github.com/Agis-/zazu/wiki) for documentation.
-
 ### Contributing
 
 I'd be more than happy to see issues reported, pull requests opened, wiki pages added.
