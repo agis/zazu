@@ -1,6 +1,7 @@
 # Zazu, your majordomo
 
-Zazu is an experimental IRC bot that does nothing interesting yet.
+Zazu is an experimental IRC bot that does nothing interesting yet. And
+probably will never do.
 
 ### Usage
 
